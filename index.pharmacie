@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Pharmacie Santé+ - Solution Complète</title>
+    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #f5f7fb; overflow-x: hidden; }
+
+        .sidebar {
+            position: fixed; left: 0; top: 0; width: 280px; height: 100vh;
+            background: linear-gradient(180deg, #0a2b3e 0%, #0d3b4f 100%);
+            color: white; z-index: 1000; transition: all 0.3s; overflow-y: auto;
+        }
+        @media (max-width: 768px) {
+            .sidebar { left: -280px; }
+            .sidebar.mobile-open { left: 0; }
+            .main-content { margin-left: 0 !important; }
+        }
+        @media (min-width: 769px) { .main-content { margin-left: 280px; } }
+
+        .sidebar-header { padding: 25px 20px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .logo-icon-sidebar {
+            width: 70px; height: 70px;
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            margin: 0 auto 15px; font-size: 32px;
+        }
+        .nav-menu { padding: 15px; }
+        .nav-item { list-style: none; margin-bottom: 5px; position: relative; }
+        .nav-link {
+            display: flex; align-items: center; padding: 12px 16px;
+            color: rgba(255,255,255,0.8); border-radius: 12px;
+            transition: all 0.3s; cursor: pointer; gap: 12px;
+        }
+        .nav-link:hover { background: rgba(255,255,255,0.15); transform: translateX(5px); color: white; }
+        .nav-link.active { background: linear-gradient(135deg, #00d4ff, #0099cc); }
+        .nav-link:hover::after {
+            content: attr(data-tooltip);
+            position: absolute; left: 100%; top: 50%; transform: translateY(-50%);
+            background: #0a2b3e; color: white; padding: 8px 15px; border-radius: 12px;
+            font-size: 0.75rem; white-space: nowrap; z-index: 1000;
+            margin-left: 10px; border-left: 3px solid #00d4ff;
+        }
+        @media (max-width: 768px) { .nav-link:hover::after { display: none; } }
+
+        .mobile-toggle {
+            display: none; position: fixed; top: 15px; left: 15px; z-index: 1100;
+            background: #0a2b3e; color: white; border: none; width: 45px; height: 45px;
+            border-radius: 12px; cursor: pointer;
+        }
+        @media (max-width: 768px) { .mobile-toggle { display: flex; align-items: center; justify-content: center; } }
+
+        .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 999; }
+        .sidebar-overlay.active { display: block; }
+
+        .main-content { transition: all 0.3s; min-height: 100vh; padding: 20px; }
+        .top-bar {
+            background: white; border-radius: 20px; padding: 15px 25px; margin-bottom: 25px;
+            display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .page-title { font-size: 1.3rem; font-weight: 700; background: linear-gradient(135deg, #0a2b3e, #0d3b4f); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+        .btn {
+            padding: 8px 16px; border: none; border-radius: 12px; cursor: pointer; font-size: 0.85rem;
+            font-weight: 500; transition: all 0.3s; display: inline-flex; align-items: center; gap: 8px;
+        }
+        .btn-primary { background: linear-gradient(135deg, #00d4ff, #0099cc); color: white; }
+        .btn-danger { background: #ff4757; color: white; }
+        .btn-warning { background: #ffa502; color: white; }
+        .btn-success { background: #2ed573; color: white; }
+        .btn-secondary { background: #747d8c; color: white; }
+        .btn-sm { padding: 5px 10px; font-size: 0.7rem; }
+
+        .badge { padding: 4px 10px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .badge-info { background: #d1ecf1; color: #0c5460; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-bottom: 25px; }
+        .stat-card {
+            background: white; border-radius: 20px; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: relative; transition: transform 0.3s; cursor: pointer;
+        }
+        .stat-card:hover { transform: translateY(-5px); }
+        .stat-card i { font-size: 45px; position: absolute; right: 15px; bottom: 15px; opacity: 0.15; }
+        .stat-value { font-size: 1.8rem; font-weight: 700; color: #0a2b3e; }
+
+        .card-container {
+            background: white; border-radius: 20px; padding: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05); margin-bottom: 20px; overflow-x: auto;
+        }
+        .card-header {
+            display: flex; justify-content: space-between; align-items: center;
+            flex-wrap: wrap; gap: 15px; margin-bottom: 20px;
+            padding-bottom: 15px; border-bottom: 2px solid #f0f2f5;
+        }
+
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eef2f7; font-size: 0.85rem; }
+        th { background: #f8f9fa; font-weight: 600; }
+
+        .modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 2000; justify-content: center; align-items: center; padding: 20px;
+        }
+        .modal-content {
+            background: white; border-radius: 24px; width: 100%; max-width: 650px;
+            max-height: 90%; overflow-y: auto;
+        }
+        .modal-header {
+            padding: 20px; background: linear-gradient(135deg, #0a2b3e, #0d3b4f);
+            color: white; border-radius: 24px 24px 0 0; display: flex; justify-content: space-between;
+        }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 500; font-size: 0.8rem; color: #333; }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 12px; font-size: 0.85rem;
+        }
+        .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        @media (max-width: 560px) { .form-row { grid-template-columns: 1fr; } }
+
+        .role-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; margin-left: 10px; }
+        .role-admin { background: #ff4757; color: white; }
+        .role-pharmacien { background: #ffa502; color: white; }
+        .role-caissier { background: #2ed573; color: white; }
+        .role-membre { background: #747d8c; color: white; }
+
+        .facture-container {
+            background: white; padding: 30px; max-width: 800px; margin: 0 auto;
+            font-family: 'Courier New', monospace;
+        }
+        .facture-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #000; padding-bottom: 20px; }
+        .facture-title { font-size: 24px; font-weight: bold; }
+        .facture-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        .facture-table th, .facture-table td { border: 1px solid #ddd; padding: 10px; text-align: left; }
+        .facture-total { text-align: right; font-size: 18px; font-weight: bold; margin-top: 20px; }
+        @media print {
+            body * { visibility: hidden; }
+            .facture-container, .facture-container * { visibility: visible; }
+            .facture-container { position: absolute; top: 0; left: 0; width: 100%; }
+        }
+
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .spinner {
+            display: inline-block; width: 18px; height: 18px;
+            border: 2px solid rgba(255,255,255,0.3); border-radius: 50%;
+            border-top-color: white; animation: spin 0.6s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .progress-container { margin-top: 25px; margin-bottom: 20px; display: none; }
+        .progress-bar { width: 100%; height: 6px; background: #e0e0e0; border-radius: 10px; overflow: hidden; }
+        .progress-fill { width: 0%; height: 100%; background: linear-gradient(90deg, #00d4ff, #0099cc); transition: width 0.4s; }
+
+        .search-bar { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .search-bar input { flex: 1; padding: 12px; border-radius: 12px; border: 1px solid #ddd; }
+
+        .audio-message { background: linear-gradient(135deg, #667eea20, #764ba220); border-radius: 50px; padding: 10px 15px; margin: 10px 0; display: inline-flex; align-items: center; gap: 15px; }
+        .forum-message { background: #f8f9fa; border-radius: 16px; padding: 15px; margin-bottom: 15px; }
+        .forum-author { font-weight: 600; color: #00d4ff; }
+        
+        .share-buttons { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px; }
+        .share-btn { padding: 8px 12px; border-radius: 10px; display: inline-flex; align-items: center; gap: 8px; text-decoration: none; color: white; font-size: 0.8rem; cursor: pointer; border: none; }
+        .share-whatsapp { background: #25D366; }
+        .share-twitter { background: #1DA1F2; }
+        .share-linkedin { background: #0077B5; }
+        .share-email { background: #EA4335; }
+        .share-pdf { background: #FF5252; }
+        .share-excel { background: #217346; }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script>
+        // ========== CONFIGURATION RBAC ==========
+        const ROLE_PERMISSIONS = {
+            admin: { name: "Administrateur", color: "#ff4757", permissions: ["all"], description: "Accès complet à tous les modules" },
+            pharmacien: { name: "Pharmacien", color: "#ffa502", permissions: ["dashboard","inventaire","medicaments","ventes","clients","fournisseurs","statistiques","rapports","forum"], description: "Gestion des médicaments, ventes et stocks" },
+            caissier: { name: "Caissier", color: "#2ed573", permissions: ["dashboard","ventes","clients","forum"], description: "Gestion des ventes et des clients" },
+            membre: { name: "Membre", color: "#747d8c", permissions: ["dashboard","forum"], description: "Accès limité au forum" }
+        };
+
+        // ========== DONNÉES PRINCIPALES ==========
+        let usersDB = JSON.parse(localStorage.getItem('pharmacie_users')) || [
+            { id: 1, nom: "Admin Systeme", email: "admin@pharmacie.com", password: "admin123", role: "admin", status: "active", avatar: "👨‍💼", lastLogin: new Date().toISOString() },
+            { id: 2, nom: "Dr Sophie Martin", email: "pharmacien@pharmacie.com", password: "pharma123", role: "pharmacien", status: "active", avatar: "👩‍⚕️", lastLogin: new Date().toISOString() },
+            { id: 3, nom: "Jean Dupont", email: "caissier@pharmacie.com", password: "caissier123", role: "caissier", status: "active", avatar: "🧑‍💼", lastLogin: new Date().toISOString() },
+            { id: 4, nom: "Pierre Durand", email: "membre@pharmacie.com", password: "membre123", role: "membre", status: "active", avatar: "👤", lastLogin: new Date().toISOString() }
+        ];
+
+        let lotsStock = JSON.parse(localStorage.getItem('lotsStock')) || [
+            { id: 1, medicamentId: 1, lot: 'LOT001', quantite: 80, prixAchat: 2.5, dateExpiration: '2025-12-31', dateEntree: '2024-01-15' },
+            { id: 2, medicamentId: 1, lot: 'LOT002', quantite: 50, prixAchat: 2.8, dateExpiration: '2025-06-30', dateEntree: '2024-02-20' },
+            { id: 3, medicamentId: 2, lot: 'LOT003', quantite: 30, prixAchat: 8.0, dateExpiration: '2025-08-15', dateEntree: '2024-01-10' },
+            { id: 4, medicamentId: 3, lot: 'LOT004', quantite: 150, prixAchat: 3.0, dateExpiration: '2025-10-20', dateEntree: '2024-03-01' }
+        ];
+
+        let medicaments = JSON.parse(localStorage.getItem('medicaments')) || [
+            { id: 1, code: 'MED001', nom: 'Paracétamol 500mg', categorie: 'Analgésique', prixVente: 5.0, stockMin: 10, stockMax: 200, description: 'Antidouleur et antipyrétique', laboratoire: 'UPSA', prescription: false },
+            { id: 2, code: 'MED002', nom: 'Amoxicilline 1g', categorie: 'Antibiotique', prixVente: 15.0, stockMin: 10, stockMax: 150, description: 'Antibiotique à large spectre', laboratoire: 'GSK', prescription: true },
+            { id: 3, code: 'MED003', nom: 'Vitamine C 1000mg', categorie: 'Vitamines', prixVente: 7.5, stockMin: 20, stockMax: 300, description: 'Complément alimentaire', laboratoire: 'Bayer', prescription: false },
+            { id: 4, code: 'MED004', nom: 'Ibuprofène 400mg', categorie: 'Anti-inflammatoire', prixVente: 8.0, stockMin: 15, stockMax: 200, description: 'Anti-inflammatoire non stéroïdien', laboratoire: 'Pfizer', prescription: false }
+        ];
+
+        let ventes = JSON.parse(localStorage.getItem('ventes')) || [
+            { id: 1, date: new Date().toISOString(), medicamentId: 1, medicamentNom: 'Paracétamol 500mg', lotUtilise: 'LOT002', quantite: 5, prixUnitaire: 5.0, total: 25.0, clientNom: 'Jean Martin', vendeur: 'Admin Systeme' },
+            { id: 2, date: new Date(Date.now() - 86400000).toISOString(), medicamentId: 2, medicamentNom: 'Amoxicilline 1g', lotUtilise: 'LOT003', quantite: 2, prixUnitaire: 15.0, total: 30.0, clientNom: 'Marie Lambert', vendeur: 'Dr Sophie Martin' }
+        ];
+
+        let clients = JSON.parse(localStorage.getItem('clients')) || [
+            { id: 1, nom: 'Martin', prenom: 'Jean', telephone: '06 12 34 56 78', email: 'jean.martin@email.com', adresse: '12 rue de Paris, 75001 Paris', carteFidelite: 'FID001', points: 120, dateNaissance: '1980-05-15' },
+            { id: 2, nom: 'Lambert', prenom: 'Marie', telephone: '06 98 76 54 32', email: 'marie.lambert@email.com', adresse: '45 avenue de la République, 75011 Paris', carteFidelite: 'FID002', points: 85, dateNaissance: '1975-08-22' }
+        ];
+
+        let fournisseurs = JSON.parse(localStorage.getItem('fournisseurs')) || [
+            { id: 1, nom: 'PharmaDistrib', contact: 'Jean Dupont', telephone: '01 23 45 67 89', email: 'contact@pharmadistrib.fr', adresse: '12 rue des Entreprises, 75012 Paris', siret: '12345678901234', delaiLivraison: 3 },
+            { id: 2, nom: 'MediLog', contact: 'Sophie Bernard', telephone: '01 98 76 54 32', email: 'contact@medilog.fr', adresse: '8 avenue du Commerce, 75008 Paris', siret: '98765432109876', delaiLivraison: 5 }
+        ];
+
+        let mouvementsStock = JSON.parse(localStorage.getItem('mouvementsStock')) || [
+            { id: 1, date: new Date().toISOString(), medicamentId: 1, type: 'entree', quantite: 100, lot: 'LOT001', raison: 'Réapprovisionnement', user: 'Admin' }
+        ];
+
+        let forumMessages = JSON.parse(localStorage.getItem('forumMessages')) || [
+            { id: 1, auteurId: 1, auteurNom: "Admin Systeme", message: "Bienvenue sur le forum de Pharmacie Santé+ !", date: new Date().toISOString(), type: "text", audioUrl: null, supprime: false },
+            { id: 2, auteurId: 2, auteurNom: "Dr Sophie Martin", message: "Bonjour à tous ! Je suis disponible pour répondre à vos questions.", date: new Date(Date.now() - 3600000).toISOString(), type: "text", audioUrl: null, supprime: false }
+        ];
+
+        let currentUser = null;
+        let nextMedicamentId = medicaments.length + 1;
+        let nextLotId = lotsStock.length + 1;
+        let nextClientId = clients.length + 1;
+        let nextFournisseurId = fournisseurs.length + 1;
+        let nextUserId = usersDB.length + 1;
+        let nextMessageId = forumMessages.length + 1;
+        let dashboardChart = null;
+        let statsChart = null;
+        let mediaRecorder = null;
+        let audioChunks = [];
+        let isRecording = false;
+
+        function saveUsers() { localStorage.setItem('pharmacie_users', JSON.stringify(usersDB)); }
+        function hasPermission(permission) { if(!currentUser) return false; if(currentUser.role === 'admin') return true; return ROLE_PERMISSIONS[currentUser.role]?.permissions.includes(permission) || ROLE_PERMISSIONS[currentUser.role]?.permissions.includes("all"); }
+        function getLotsFIFO(medicamentId) { return lotsStock.filter(l => l.medicamentId === medicamentId && l.quantite > 0).sort((a, b) => new Date(a.dateExpiration) - new Date(b.dateExpiration)); }
+        function updateMedicamentStockTotal(medicamentId) { return lotsStock.filter(l => l.medicamentId === medicamentId).reduce((s, l) => s + l.quantite, 0); }
+
+        // ========== PAGE DE CONNEXION ==========
+        function renderLoginPage() {
+            document.getElementById('app').innerHTML = `
+                <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#0a2b3e 0%,#0d3b4f 100%);">
+                    <div style="background:white;border-radius:32px;padding:45px 40px;max-width:480px;width:100%;box-shadow:0 25px 50px rgba(0,0,0,0.2);animation:slideUp 0.6s">
+                        <div style="text-align:center;margin-bottom:35px">
+                            <div style="width:80px;height:80px;background:linear-gradient(135deg,#00d4ff,#0099cc);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px;font-size:38px;color:white"><i class="fas fa-hand-holding-medical"></i></div>
+                            <h1 style="color:#0a2b3e">Pharmacie Santé+</h1>
+                            <p style="color:#666">Système Professionnel de Gestion</p>
+                        </div>
+                        <div id="loginError" style="background:#fee;color:#ff4757;padding:12px;border-radius:14px;margin-bottom:25px;display:none;"><i class="fas fa-exclamation-circle"></i> <span id="errorText"></span></div>
+                        <form id="loginForm">
+                            <div class="form-group"><label><i class="fas fa-envelope"></i> Email</label><input type="email" id="loginEmail" placeholder="exemple@pharmacie.com" required style="width:100%;padding:14px;border:2px solid #e0e0e0;border-radius:16px"></div>
+                            <div class="form-group"><label><i class="fas fa-lock"></i> Mot de passe</label><div style="position:relative"><input type="password" id="loginPassword" placeholder="••••••••" required style="width:100%;padding:14px;border:2px solid #e0e0e0;border-radius:16px"><i class="fas fa-eye toggle-password" onclick="togglePassword()" style="position:absolute;right:16px;top:50%;transform:translateY(-50%);cursor:pointer;color:#999"></i></div></div>
+                            <div class="progress-container" id="progressContainer"><div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div><div class="progress-text" id="progressText" style="text-align:center;font-size:0.75rem;margin-top:8px"></div></div>
+                            <button type="submit" class="btn-login" id="loginBtn" style="width:100%;padding:15px;background:linear-gradient(135deg,#00d4ff,#0099cc);color:white;border:none;border-radius:16px;font-size:1rem;font-weight:700;cursor:pointer;margin-top:10px"><i class="fas fa-sign-in-alt"></i> Se connecter</button>
+                        </form>
+                        <div style="margin-top:30px;padding-top:25px;border-top:1px solid #e0e0e0;text-align:center">
+                            <div style="font-size:0.75rem;color:#999;margin-bottom:12px">Comptes de démonstration</div>
+                            <div style="display:flex;flex-wrap:wrap;gap:10px;justify-content:center">
+                                <div onclick="fillDemo('admin@pharmacie.com','admin123')" style="background:#f8f9fa;padding:8px 12px;border-radius:12px;cursor:pointer"><span>admin@pharmacie.com</span><span class="role-badge role-admin">Admin</span></div>
+                                <div onclick="fillDemo('pharmacien@pharmacie.com','pharma123')" style="background:#f8f9fa;padding:8px 12px;border-radius:12px;cursor:pointer"><span>pharmacien@pharmacie.com</span><span class="role-badge role-pharmacien">Pharmacien</span></div>
+                                <div onclick="fillDemo('caissier@pharmacie.com','caissier123')" style="background:#f8f9fa;padding:8px 12px;border-radius:12px;cursor:pointer"><span>caissier@pharmacie.com</span><span class="role-badge role-caissier">Caissier</span></div>
+                                <div onclick="fillDemo('membre@pharmacie.com','membre123')" style="background:#f8f9fa;padding:8px 12px;border-radius:12px;cursor:pointer"><span>membre@pharmacie.com</span><span class="role-badge role-membre">Membre</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            window.togglePassword = function() {
+                const pwd = document.getElementById('loginPassword');
+                const icon = document.querySelector('.toggle-password');
+                if (pwd.type === 'password') { pwd.type = 'text'; icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); }
+                else { pwd.type = 'password'; icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye'); }
+            };
+            window.fillDemo = function(email, pwd) {
+                document.getElementById('loginEmail').value = email;
+                document.getElementById('loginPassword').value = pwd;
+            };
+            document.getElementById('loginForm').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const email = document.getElementById('loginEmail').value.trim();
+                const pwd = document.getElementById('loginPassword').value;
+                const progress = document.getElementById('progressContainer');
+                const loginBtn = document.getElementById('loginBtn');
+                const progressFill = document.getElementById('progressFill');
+                const progressText = document.getElementById('progressText');
+                if (!email || !pwd) { showError('Veuillez remplir tous les champs'); return; }
+                progress.style.display = 'block';
+                loginBtn.disabled = true;
+                loginBtn.innerHTML = '<span class="spinner"></span> Connexion...';
+                const steps = [{w:25,t:"Vérification des identifiants..."},{w:50,t:"Authentification en cours..."},{w:75,t:"Vérification des droits..."},{w:100,t:"Connexion réussie !"}];
+                for(let s of steps){ await new Promise(r=>setTimeout(()=>{progressFill.style.width=s.w+'%';progressText.textContent=s.t;r();},500)); }
+                const user = usersDB.find(u=>u.email===email && u.password===pwd && u.status === 'active');
+                if(!user){ progress.style.display='none'; loginBtn.disabled=false; loginBtn.innerHTML='<i class="fas fa-sign-in-alt"></i> Se connecter'; showError('Email ou mot de passe incorrect'); return; }
+                localStorage.setItem('pharmacie_session', JSON.stringify({ id: user.id, role: user.role }));
+                currentUser = user;
+                renderMainApp();
+            });
+            function showError(msg){ const err=document.getElementById('loginError'); document.getElementById('errorText').textContent=msg; err.style.display='flex'; setTimeout(()=>err.style.display='none',3000); }
+        }
+
+        // ========== APPLICATION PRINCIPALE ==========
+        function renderMainApp() {
+            const user = currentUser;
+            const menus = [
+                { id: 'dashboard', icon: 'fas fa-tachometer-alt', name: 'Dashboard', tooltip: '📊 Vue d\'ensemble et statistiques', permission: 'dashboard' },
+                { id: 'inventaire', icon: 'fas fa-boxes', name: 'Inventaire FIFO', tooltip: '📦 Gestion des stocks avec lots', permission: 'inventaire' },
+                { id: 'medicaments', icon: 'fas fa-capsules', name: 'Médicaments', tooltip: '💊 Catalogue complet', permission: 'medicaments' },
+                { id: 'ventes', icon: 'fas fa-shopping-cart', name: 'Ventes FIFO', tooltip: '🛒 Enregistrement des ventes', permission: 'ventes' },
+                { id: 'clients', icon: 'fas fa-users', name: 'Clients', tooltip: '👥 Gestion de la clientèle', permission: 'clients' },
+                { id: 'fournisseurs', icon: 'fas fa-truck', name: 'Fournisseurs', tooltip: '🚚 Gestion des fournisseurs', permission: 'fournisseurs' },
+                { id: 'statistiques', icon: 'fas fa-chart-line', name: 'Statistiques', tooltip: '📈 Analyses et graphiques', permission: 'statistiques' },
+                { id: 'rapports', icon: 'fas fa-file-alt', name: 'Rapports', tooltip: '📄 Rapports avancés', permission: 'rapports' },
+                { id: 'utilisateurs', icon: 'fas fa-user-shield', name: 'Utilisateurs', tooltip: '👥 Gestion RBAC', permission: 'utilisateurs' },
+                { id: 'forum', icon: 'fas fa-comments', name: 'Forum', tooltip: '💬 Discussion avec audio', permission: 'forum' }
+            ];
+            const accessibleMenus = user.role === 'admin' ? menus : menus.filter(m => ROLE_PERMISSIONS[user.role]?.permissions.includes(m.permission));
+            
+            document.getElementById('app').innerHTML = `
+                <button class="mobile-toggle" id="mobileToggle"><i class="fas fa-bars"></i></button>
+                <div class="sidebar-overlay" id="sidebarOverlay"></div>
+                <div class="sidebar" id="sidebar">
+                    <div class="sidebar-header">
+                        <div class="logo-icon-sidebar"><i class="fas fa-hand-holding-medical"></i></div>
+                        <h3>Pharmacie Santé+</h3>
+                        <p style="font-size:0.7rem;opacity:0.8;">${user.nom}</p>
+                        <span class="role-badge role-${user.role}">${ROLE_PERMISSIONS[user.role]?.name || user.role}</span>
+                    </div>
+                    <ul class="nav-menu">
+                        ${accessibleMenus.map(menu => `<li class="nav-item"><div class="nav-link ${menu.id === 'dashboard' ? 'active' : ''}" data-page="${menu.id}" data-tooltip="${menu.tooltip}"><i class="${menu.icon}"></i><span>${menu.name}</span></div></li>`).join('')}
+                        <li class="nav-item"><div class="nav-link" id="logoutBtn" style="margin-top:20px;background:rgba(255,255,255,0.1);"><i class="fas fa-sign-out-alt"></i><span>Déconnexion</span></div></li>
+                    </ul>
+                </div>
+                <div class="main-content">
+                    <div class="top-bar">
+                        <div class="page-title" id="pageTitle">Tableau de bord</div>
+                        <div><span id="currentDate"></span> <span class="user-avatar" style="margin-left:15px;cursor:pointer" onclick="showProfile()">${user.avatar || '👤'}</span></div>
+                    </div>
+                    <div id="dashboardPage" class="fade-in"></div>
+                    <div id="inventairePage" style="display:none" class="fade-in"></div>
+                    <div id="medicamentsPage" style="display:none" class="fade-in"></div>
+                    <div id="ventesPage" style="display:none" class="fade-in"></div>
+                    <div id="clientsPage" style="display:none" class="fade-in"></div>
+                    <div id="fournisseursPage" style="display:none" class="fade-in"></div>
+                    <div id="statistiquesPage" style="display:none" class="fade-in"></div>
+                    <div id="rapportsPage" style="display:none" class="fade-in"></div>
+                    <div id="utilisateursPage" style="display:none" class="fade-in"></div>
+                    <div id="forumPage" style="display:none" class="fade-in"></div>
+                </div>
+            `;
+            
+            document.getElementById('currentDate').innerHTML = new Date().toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            
+            // ========== DASHBOARD COMPLET ==========
+            function renderDashboard() {
+                const totalStock = lotsStock.reduce((s,l)=>s+l.quantite,0);
+                const valeurStock = lotsStock.reduce((s,l)=>s+(l.quantite*l.prixAchat),0);
+                const ventesJour = ventes.filter(v=>new Date(v.date).toDateString()===new Date().toDateString()).length;
+                const caJour = ventes.filter(v=>new Date(v.date).toDateString()===new Date().toDateString()).reduce((s,v)=>s+v.total,0);
+                const stockFaible = lotsStock.filter(l=>{const m=medicaments.find(m=>m.id===l.medicamentId); return m && l.quantite<=m.stockMin;}).length;
+                
+                document.getElementById('dashboardPage').innerHTML = `
+                    <div class="stats-grid">
+                        <div class="stat-card"><i class="fas fa-capsules"></i><div class="stat-title">Médicaments</div><div class="stat-value">${medicaments.length}</div></div>
+                        <div class="stat-card"><i class="fas fa-boxes"></i><div class="stat-title">Stock total</div><div class="stat-value">${totalStock}</div></div>
+                        <div class="stat-card"><i class="fas fa-euro-sign"></i><div class="stat-title">Valeur stock</div><div class="stat-value">${valeurStock.toFixed(2)} €</div></div>
+                        <div class="stat-card"><i class="fas fa-exclamation-triangle"></i><div class="stat-title">Stock faible</div><div class="stat-value">${stockFaible}</div></div>
+                        <div class="stat-card"><i class="fas fa-shopping-cart"></i><div class="stat-title">Ventes jour</div><div class="stat-value">${ventesJour}</div></div>
+                        <div class="stat-card"><i class="fas fa-euro-sign"></i><div class="stat-title">CA jour</div><div class="stat-value">${caJour.toFixed(2)} €</div></div>
+                        <div class="stat-card"><i class="fas fa-users"></i><div class="stat-title">Clients</div><div class="stat-value">${clients.length}</div></div>
+                        <div class="stat-card"><i class="fas fa-truck"></i><div class="stat-title">Fournisseurs</div><div class="stat-value">${fournisseurs.length}</div></div>
+                    </div>
+                    <div class="card-container">
+                        <div class="card-header"><h3><i class="fas fa-history"></i> Dernières ventes</h3></div>
+                        <div style="overflow-x:auto"><table style="width:100%"><thead><tr><th>Date</th><th>Médicament</th><th>Lot</th><th>Quantité</th><th>Total</th><th>Client</th></tr></thead><tbody>${ventes.slice(-5).reverse().map(v=>`<tr><td>${new Date(v.date).toLocaleString()}</td><td>${v.medicamentNom}</td><td>${v.lotUtilise}</td><td>${v.quantite}</td><td>${v.total} €</td><td>${v.clientNom}</td></tr>`).join('')}</tbody></table></div>
+                    </div>
+                    <div class="card-container"><div class="card-header"><h3><i class="fas fa-chart-line"></i> Évolution des ventes (7 derniers jours)</h3></div><canvas id="dashboardChart" style="max-height: 300px;"></canvas></div>
+                `;
+                
+                const ventesParJour = {};
+                ventes.forEach(v=>{const d=new Date(v.date).toLocaleDateString(); ventesParJour[d]=(ventesParJour[d]||0)+v.total;});
+                const labels=Object.keys(ventesParJour).slice(-7);
+                const data=labels.map(l=>ventesParJour[l]);
+                if(dashboardChart)dashboardChart.destroy();
+                const ctx=document.getElementById('dashboardChart')?.getContext('2d');
+                if(ctx)dashboardChart=new Chart(ctx,{type:'line',data:{labels,datasets:[{label:'CA (€)',data,borderColor:'#00d4ff',backgroundColor:'rgba(0,212,255,0.1)',tension:0.4,fill:true}]},options:{responsive:true}});
+            }
+            
+            // ========== INVENTAIRE ==========
+            function renderInventaire() {
+                const totalStock = lotsStock.reduce((s,l)=>s+l.quantite,0);
+                const valeurStock = lotsStock.reduce((s,l)=>s+(l.quantite*l.prixAchat),0);
+                document.getElementById('inventairePage').innerHTML = `
+                    <div class="stats-grid"><div class="stat-card"><i class="fas fa-boxes"></i><div class="stat-title">Stock total</div><div class="stat-value">${totalStock}</div></div><div class="stat-card"><i class="fas fa-euro-sign"></i><div class="stat-title">Valeur stock</div><div class="stat-value">${valeurStock.toFixed(2)} €</div></div></div>
+                    <div class="card-container"><div class="card-header"><h3><i class="fas fa-boxes"></i> Gestion d'inventaire (FIFO)</h3><button class="btn btn-primary btn-sm" onclick="openInventaireModal()"><i class="fas fa-plus"></i> Ajuster stock</button></div><div style="overflow-x:auto"><table style="width:100%"><thead><tr><th>Médicament</th><th>Lot</th><th>Quantité</th><th>Prix achat</th><th>Date expiration</th><th>Âge (jours)</th></tr></thead><tbody>${lotsStock.map(l=>{const m=medicaments.find(m=>m.id===l.medicamentId); const age=Math.floor((new Date()-new Date(l.dateEntree))/(1000*3600*24)); return `<tr><td>${m?.nom}</td><td>${l.lot}</td><td>${l.quantite}</td><td>${l.prixAchat} €</td><td><span class="badge ${new Date(l.dateExpiration)<new Date()?'badge-danger':'badge-success'}">${l.dateExpiration}</span></td><td>${age} j</td></tr>`;}).join('')}</tbody></table></div></div>
+                    <div class="card-container"><div class="card-header"><h3>📜 Historique des mouvements</h3></div><div style="overflow-x:auto"><table style="width:100%"><thead><tr><th>Date</th><th>Médicament</th><th>Type</th><th>Quantité</th><th>Lot</th><th>Raison</th></tr></thead><tbody>${mouvementsStock.slice(-10).reverse().map(m=>{const med=medicaments.find(md=>md.id===m.medicamentId); return `<tr><td>${new Date(m.date).toLocaleString()}</td><td>${med?.nom}</td><td>${m.type==='entree'?'📥 Entrée':'📤 Sortie'}</td><td>${m.quantite}</td><td>${m.lot||'-'}</td><td>${m.raison||'-'}</td></tr>`;}).join('')}</tbody></table></div></div>
+                `;
+            }
+            
+            // ========== MÉDICAMENTS ==========
+            function renderMedicaments() {
+                document.getElementById('medicamentsPage').innerHTML = `
+                    <div class="search-bar"><input type="text" id="searchMed" placeholder="🔍 Rechercher un médicament..."><button class="btn btn-primary" onclick="openMedModal()"><i class="fas fa-plus"></i> Nouveau médicament</button></div>
+                    <div class="card-container"><div style="overflow-x:auto"><table style="width:100%"><thead><tr><th>Code</th><th>Nom</th><th>Catégorie</th><th>Prix vente</th><th>Stock total</th><th>Stock min</th><th>Description</th><th>Actions</th><tr></thead><tbody id="medTableBody"></tbody></table></div></div>
+                `;
+                refreshMedTable();
+                document.getElementById('searchMed')?.addEventListener('input', refreshMedTable);
+            }
+            
+            function refreshMedTable() {
+                const search = document.getElementById('searchMed')?.value.toLowerCase() || '';
+                const filtered = medicaments.filter(m=>m.nom.toLowerCase().includes(search));
+                document.getElementById('medTableBody').innerHTML = filtered.map(m=>{const total=updateMedicamentStockTotal(m.id); return `<tr><td>${m.code}</td><td><strong>${m.nom}</strong></td><td>${m.categorie}</td><td>${m.prixVente} €</td><td><span class="badge ${total<=m.stockMin?'badge-danger':'badge-success'}">${total}</span></td><td>${m.stockMin}</td><td>${m.description||'-'}</td><td><button class="btn btn-warning btn-sm" onclick="openVenteModal(${m.id})"><i class="fas fa-shopping-cart"></i></button> <button class="btn btn-danger btn-sm" onclick="deleteMed(${m.id})"><i class="fas fa-trash"></i></button></td></tr>`;}).join('');
+            }
+            
+            // ========== VENTES FIFO ==========
+            function renderVentes() {
+                const todayVentes = ventes.filter(v=>new Date(v.date).toDateString()===new Date().toDateString());
+                document.getElementById('ventesPage').innerHTML = `
+                    <div class="stats-grid"><div class="stat-card" onclick="openVenteModal()"><i class="fas fa-plus-circle"></i><div class="stat-title">Nouvelle vente FIFO</div><div class="stat-value" style="font-size:1rem;">Cliquer ici</div></div><div class="stat-card"><i class="fas fa-chart-line"></i><div class="stat-title">Ventes aujourd'hui</div><div class="stat-value" id="ventesJour">${todayVentes.length}</div></div><div class="stat-card"><i class="fas fa-euro-sign"></i><div class="stat-title">CA aujourd'hui</div><div class="stat-value" id="caJour">${todayVentes.reduce((s,v)=>s+v.total,0).toFixed(2)} €</div></div></div>
+                    <div class="card-container"><div class="card-header"><h3><i class="fas fa-list"></i> Historique des ventes FIFO</h3></div><div style="overflow-x:auto"><table style="width:100%"><thead><tr><th>Date</th><th>Médicament</th><th>Lot utilisé</th><th>Quantité</th><th>Prix unitaire</th><th>Total</th><th>Client</th><th>Vendeur</th><th>Facture</th></tr></thead><tbody id="ventesListBody"></tbody></table></div></div>
+                `;
+                refreshVentesList();
+            }
+            
+            function refreshVentesList() {
+                const tbody = document.getElementById('ventesListBody');
+                if(tbody) tbody.innerHTML = ventes.slice().reverse().map(v => `<tr><td>${new Date(v.date).toLocaleString()}</td><td>${v.medicamentNom}</td><td>${v.lotUtilise}</td><td>${v.quantite}</td><td>${v.prixUnitaire} €</td><td><strong>${v.total} €</strong></td><td>${v.clientNom}</td><td>${v.vendeur}</td><td><button class="btn btn-primary btn-sm" onclick="imprimerFacture(${v.id})"><i class="fas fa-print"></i> Facture</button></td></tr>`).join('');
+            }
+            
+            // ========== CLIENTS ==========
+            function renderClients() {
+                document.getElementById('clientsPage').innerHTML = `
+                    <button class="btn btn-primary" onclick="openClientModal()" style="margin-bottom:20px;"><i class="fas fa-user-plus"></i> Nouveau client</button>
+                    <div class="card-container"><div style="overflow-x:auto"><table style="width:100%"><thead><tr><th>Nom</th><th>Prénom</th><th>Téléphone</th><th>Email</th><th>Adresse</th><th>Carte fidélité</th><th>Points</th><th>Date naissance</th><th>Actions</th></tr></thead><tbody id="clientsTableBody"></tbody></table></div></div>
+                `;
+                refreshClientsTable();
+            }
+            
+            function refreshClientsTable() {
+                const tbody = document.getElementById('clientsTableBody');
+                if(tbody) tbody.innerHTML = clients.map(c => `<tr><td>${c.nom}</td><td>${c.prenom}</td><td>${c.telephone}</td><td>${c.email}</td><td>${c.adresse}</td><td>${c.carteFidelite||'-'}</td><td>${c.points||0}</td><td>${c.dateNaissance||'-'}</td><td><button class="btn btn-danger btn-sm" onclick="deleteClient(${c.id})"><i class="fas fa-trash"></i></button></td></tr>`).join('');
+            }
+            
+            // ========== FOURNISSEURS ==========
+            function renderFournisseurs() {
+                document.getElementById('fournisseursPage').innerHTML = `
+                    <button class="btn btn-primary" onclick="openFournisseurModal()" style="margin-bottom:20px;"><i class="fas fa-truck"></i> Nouveau fournisseur</button>
+                    <div class="card-container"><div style="overflow-x:auto"><table style="width:100%"><thead><tr><th>Nom</th><th>Contact</th><th>Téléphone</th><th>Email</th><th>Adresse</th><th>SIRET</th><th>Délai livraison</th><th>Actions</th></tr></thead><tbody id="fournisseursTableBody"></tbody></table></div></div>
+                `;
+                refreshFournisseursTable();
+            }
+            
+            function refreshFournisseursTable() {
+                const tbody = document.getElementById('fournisseursTableBody');
+                if(tbody) tbody.innerHTML = fournisseurs.map(f => `<tr><td><strong>${f.nom}</strong></td><td>${f.contact}</td><td>${f.telephone}</td><td>${f.email}</td><td>${f.adresse}</td><td>${f.siret||'-'}</td><td>${f.delaiLivraison||'-'} j</td><td><button class="btn btn-danger btn-sm" onclick="deleteFournisseur(${f.id})"><i class="fas fa-trash"></i></button></td></tr>`).join('');
+            }
+            
+            // ========== STATISTIQUES ==========
+            function renderStatistiques() {
+                const caTotal = ventes.reduce((s,v)=>s+v.total,0);
+                const totalVendus = ventes.reduce((s,v)=>s+v.quantite,0);
+                const valeurStock = lotsStock.reduce((s,l)=>s+(l.quantite*l.prixAchat),0);
+                document.getElementById('statistiquesPage').innerHTML = `
+                    <div class="stats-grid"><div class="stat-card"><i class="fas fa-chart-bar"></i><div class="stat-title">CA Total</div><div class="stat-value">${caTotal.toFixed(2)} €</div></div><div class="stat-card"><i class="fas fa-pills"></i><div class="stat-title">Médicaments vendus</div><div class="stat-value">${totalVendus}</div></div><div class="stat-card"><i class="fas fa-boxes"></i><div class="stat-title">Valeur du stock</div><div class="stat-value">${valeurStock.toFixed(2)} €</div></div></div>
+                    <div class="card-container"><canvas id="statsChart" style="max-height: 400px;"></canvas></div>
+                    <div class="card-container"><div class="card-header"><h3>🏆 Top 10 médicaments vendus</h3></div><div id="topMedicaments"></div></div>
+                `;
+                
+                const ventesParMois = {};
+                ventes.forEach(v=>{const m=new Date(v.date).toLocaleDateString('fr',{month:'short',year:'numeric'}); ventesParMois[m]=(ventesParMois[m]||0)+v.total;});
+                const labels=Object.keys(ventesParMois);
+                const data=labels.map(l=>ventesParMois[l]);
+                if(statsChart)statsChart.destroy();
+                const ctx=document.getElementById('statsChart')?.getContext('2d');
+                if(ctx)statsChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'CA par mois (€)',data,backgroundColor:'#00d4ff',borderRadius:10}]},options:{responsive:true}});
+                
+                const topMed = {};
+                ventes.forEach(v=>{topMed[v.medicamentNom]=(topMed[v.medicamentNom]||0)+v.quantite;});
+                const top10 = Object.entries(topMed).sort((a,b)=>b[1]-a[1]).slice(0,10);
+                document.getElementById('topMedicaments').innerHTML = `<table style="width:100%"><thead><tr><th>Médicament</th><th>Quantité vendue</th></tr></thead><tbody>${top10.map(([nom,qte])=>`<tr><td>${nom}</td><td>${qte}</td></tr>`).join('')}</tbody></table>`;
+            }
+            
+            // ========== RAPPORTS ==========
+            function renderRapports() {
+                document.getElementById('rapportsPage').innerHTML = `
+                    <div class="card-container"><div class="card-header"><h3><i class="fas fa-filter"></i> Filtres personnalisés</h3></div><div class="filter-group" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:20px"><select id="reportType"><option value="ventes">Rapport des ventes</option><option value="stock">Rapport de stock</option><option value="medicaments">Rapport médicaments</option><option value="clients">Rapport clients</option></select><input type="date" id="reportDateStart"><input type="date" id="reportDateEnd"><input type="text" id="reportSearch" placeholder="Rechercher..."><button class="btn btn-primary" onclick="generateReport()"><i class="fas fa-search"></i> Générer</button></div></div>
+                    <div class="card-container" id="reportResult"><div class="card-header"><h3>Résultat du rapport</h3><div class="share-buttons" id="shareButtons"></div></div><div id="reportContent"></div></div>
+                `;
+            }
+            
+            window.generateReport = () => {
+                const type = document.getElementById('reportType').value;
+                const search = document.getElementById('reportSearch').value.toLowerCase();
+                let data = [], headers = [];
+                if(type === 'ventes'){ data = ventes; headers = ['Date','Médicament','Lot','Quantité','Total','Client']; }
+                else if(type === 'stock'){ data = lotsStock; headers = ['Médicament','Lot','Quantité','Expiration']; }
+                else if(type === 'medicaments'){ data = medicaments.filter(m=>!search || m.nom.toLowerCase().includes(search)); headers = ['Code','Nom','Catégorie','Prix','Stock']; }
+                else{ data = clients; headers = ['Nom','Prénom','Téléphone','Email']; }
+                let html = '<table style="width:100%"><thead><tr>'+headers.map(h=>`<th>${h}</th>`).join('')+'</tr></thead><tbody>';
+                if(type === 'ventes') data.forEach(v=>html+=`<tr><td>${new Date(v.date).toLocaleString()}</td><td>${v.medicamentNom}</td><td>${v.lotUtilise}</td><td>${v.quantite}</td><td>${v.total} €</td><td>${v.clientNom}</td></tr>`);
+                else if(type === 'stock') data.forEach(l=>{const m=medicaments.find(md=>md.id===l.medicamentId); html+=`<tr><td>${m?.nom}</td><td>${l.lot}</td><td>${l.quantite}</td><td>${l.dateExpiration}</td></tr>`;});
+                else if(type === 'medicaments') data.forEach(m=>{const stock=updateMedicamentStockTotal(m.id); html+=`<tr><td>${m.code}</td><td>${m.nom}</td><td>${m.categorie}</td><td>${m.prixVente} €</td><td>${stock}</td></tr>`;});
+                else data.forEach(c=>html+=`<tr><td>${c.nom}</td><td>${c.prenom}</td><td>${c.telephone}</td><td>${c.email}</td></tr>`);
+                html+=`</tbody></table><p><strong>Total: ${data.length} enregistrements</strong></p>`;
+                document.getElementById('reportContent').innerHTML = html;
+                const text = encodeURIComponent(document.getElementById('reportContent').innerText.substring(0,500));
+                document.getElementById('shareButtons').innerHTML = `
+                    <a href="https://wa.me/?text=${text}" target="_blank" class="share-btn share-whatsapp"><i class="fab fa-whatsapp"></i> WhatsApp</a>
+                    <a href="https://twitter.com/intent/tweet?text=${text}" target="_blank" class="share-btn share-twitter"><i class="fab fa-twitter"></i> Twitter</a>
+                    <a href="https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}" target="_blank" class="share-btn share-linkedin"><i class="fab fa-linkedin"></i> LinkedIn</a>
+                    <a href="mailto:?subject=Rapport Pharmacie&body=${text}" class="share-btn share-email"><i class="fas fa-envelope"></i> Email</a>
+                    <button class="share-btn share-excel" onclick="exportToExcel()"><i class="fas fa-file-excel"></i> Excel</button>
+                    <button class="share-btn share-pdf" onclick="exportToPDF()"><i class="fas fa-file-pdf"></i> PDF</button>
+                `;
+            };
+            
+            window.exportToExcel = () => { const ws = XLSX.utils.json_to_sheet([]); const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Rapport'); XLSX.writeFile(wb, 'rapport.xlsx'); Swal.fire('Exporté','Fichier Excel téléchargé','success'); };
+            window.exportToPDF = () => { const element = document.getElementById('reportContent'); html2pdf().from(element).save('rapport.pdf'); };
+            
+            // ========== UTILISATEURS ==========
+            function renderUtilisateurs() {
+                document.getElementById('utilisateursPage').innerHTML = `
+                    <div class="card-container"><div class="card-header"><h3><i class="fas fa-user-shield"></i> Gestion des utilisateurs - RBAC</h3>${hasPermission('utilisateurs')?`<button class="btn btn-primary" onclick="openUserModal()"><i class="fas fa-user-plus"></i> Nouvel utilisateur</button>`:''}</div><div style="overflow-x:auto"><table style="width:100%"><thead><tr><th>ID</th><th>Avatar</th><th>Nom</th><th>Email</th><th>Rôle</th><th>Statut</th><th>Dernière connexion</th><th>Actions</th></tr></thead><tbody id="usersTableBody"></tbody></table></div></div>
+                `;
+                refreshUsersTable();
+            }
+            
+            function refreshUsersTable() {
+                const tbody = document.getElementById('usersTableBody');
+                if(tbody) tbody.innerHTML = usersDB.map(u => `<tr><td>${u.id}</td><td style="font-size:1.5rem">${u.avatar||'👤'}</td><td><strong>${u.nom}</strong></td><td>${u.email}</td><td><span class="role-badge role-${u.role}">${ROLE_PERMISSIONS[u.role]?.name||u.role}</span></td><td><span style="background:${u.status==='active'?'#d4edda':'#f8d7da'};color:${u.status==='active'?'#155724':'#721c24'};padding:4px 10px;border-radius:20px">${u.status==='active'?'Actif':'Inactif'}</span></td><td>${u.lastLogin?new Date(u.lastLogin).toLocaleString():'-'}</td><td>${hasPermission('utilisateurs') && u.id!==user.id?`<button class="btn btn-warning btn-sm" onclick="editUser(${u.id})"><i class="fas fa-edit"></i></button> <button class="btn btn-danger btn-sm" onclick="deleteUser(${u.id})"><i class="fas fa-trash"></i></button>`:(u.id===user.id?'<span class="badge badge-info">Vous</span>':'')}</td></tr>`).join('');
+            }
+            
+            // ========== FORUM ==========
+            function renderForum() {
+                const nonSupprimes = forumMessages.filter(m=>!m.supprime);
+                document.getElementById('forumPage').innerHTML = `
+                    <div class="card-container"><div class="card-header"><h3><i class="fas fa-comments"></i> Forum de discussion</h3><div><button class="btn btn-primary btn-sm" onclick="openForumModal()"><i class="fas fa-plus"></i> Message texte</button> <button class="btn btn-success btn-sm" id="recordAudioBtn" onclick="toggleAudioRecording()"><i class="fas fa-microphone"></i> Enregistrer audio</button></div></div><div id="forumList" style="max-height:500px;overflow-y:auto">${nonSupprimes.map(m=>`<div class="forum-message"><div class="forum-author"><i class="fas fa-user-circle"></i> ${m.auteurNom}</div><div class="forum-date" style="font-size:0.7rem;color:#999">${new Date(m.date).toLocaleString()}</div><div class="forum-message-text">${m.type==='text'?m.message:''}</div>${m.type==='audio'&&m.audioUrl?`<div class="audio-message"><i class="fas fa-headphones"></i><audio controls src="${m.audioUrl}"></audio></div>`:''}${(user.role==='admin'||m.auteurId===user.id)?`<button class="btn btn-danger btn-sm" onclick="deleteMessage(${m.id})">Supprimer</button>`:''}</div>`).join('')}</div></div>
+                `;
+            }
+            
+            // ========== MODALS ET ACTIONS ==========
+            window.openMedModal = () => {
+                document.body.insertAdjacentHTML('beforeend', `<div id="medModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>➕ Nouveau médicament</h3><span onclick="closeModal('medModal')" style="cursor:pointer">&times;</span></div><div class="modal-body"><div class="form-row"><div class="form-group"><label>Code</label><input type="text" id="medCode"></div><div class="form-group"><label>Nom</label><input type="text" id="medNom"></div></div><div class="form-row"><div class="form-group"><label>Catégorie</label><select id="medCategorie"><option>Analgésique</option><option>Antibiotique</option><option>Vitamines</option><option>Anti-inflammatoire</option></select></div><div class="form-group"><label>Prix vente (€)</label><input type="number" id="medPrix" step="0.01"></div></div><div class="form-row"><div class="form-group"><label>Stock minimum</label><input type="number" id="medStockMin" value="10"></div><div class="form-group"><label>Laboratoire</label><input type="text" id="medLabo"></div></div><div class="form-group"><label>Description</label><textarea id="medDesc" rows="2"></textarea></div><div class="form-row"><div class="form-group"><label>Date expiration (lot initial)</label><input type="date" id="medExp"></div><div class="form-group"><label>Quantité initiale</label><input type="number" id="medQteInit"></div></div><div class="form-group"><label>Numéro lot initial</label><input type="text" id="medLotInit"></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('medModal')">Annuler</button><button class="btn btn-primary" onclick="saveMedicament()">Enregistrer</button></div></div></div>`);
+                document.getElementById('medModal').style.display = 'flex';
+            };
+            
+            window.saveMedicament = () => {
+                const newMed = { id: nextMedicamentId++, code: document.getElementById('medCode').value, nom: document.getElementById('medNom').value, categorie: document.getElementById('medCategorie').value, prixVente: parseFloat(document.getElementById('medPrix').value), stockMin: parseInt(document.getElementById('medStockMin').value), stockMax: 200, description: document.getElementById('medDesc').value, laboratoire: document.getElementById('medLabo').value, prescription: false };
+                medicaments.push(newMed);
+                const qteInit = parseInt(document.getElementById('medQteInit').value);
+                if(qteInit>0){ lotsStock.push({ id: nextLotId++, medicamentId: newMed.id, lot: document.getElementById('medLotInit').value || `LOT${newMed.id}`, quantite: qteInit, prixAchat: newMed.prixVente*0.6, dateExpiration: document.getElementById('medExp').value, dateEntree: new Date().toISOString().split('T')[0] }); }
+                localStorage.setItem('medicaments', JSON.stringify(medicaments));
+                localStorage.setItem('lotsStock', JSON.stringify(lotsStock));
+                closeModal('medModal');
+                refreshMedTable();
+                renderInventaire();
+                renderDashboard();
+                Swal.fire('Succès','Médicament ajouté','success');
+            };
+            
+            window.openClientModal = () => {
+                document.body.insertAdjacentHTML('beforeend', `<div id="clientModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>➕ Nouveau client</h3><span onclick="closeModal('clientModal')" style="cursor:pointer">&times;</span></div><div class="modal-body"><div class="form-row"><div class="form-group"><label>Nom</label><input type="text" id="cliNom"></div><div class="form-group"><label>Prénom</label><input type="text" id="cliPrenom"></div></div><div class="form-row"><div class="form-group"><label>Téléphone</label><input type="tel" id="cliTel"></div><div class="form-group"><label>Email</label><input type="email" id="cliEmail"></div></div><div class="form-group"><label>Adresse</label><input type="text" id="cliAdresse"></div><div class="form-row"><div class="form-group"><label>Date naissance</label><input type="date" id="cliNaiss"></div><div class="form-group"><label>Carte fidélité</label><input type="text" id="cliCarte"></div></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('clientModal')">Annuler</button><button class="btn btn-primary" onclick="saveClient()">Enregistrer</button></div></div></div>`);
+                document.getElementById('clientModal').style.display = 'flex';
+            };
+            
+            window.saveClient = () => {
+                clients.push({ id: nextClientId++, nom: document.getElementById('cliNom').value, prenom: document.getElementById('cliPrenom').value, telephone: document.getElementById('cliTel').value, email: document.getElementById('cliEmail').value, adresse: document.getElementById('cliAdresse').value, carteFidelite: document.getElementById('cliCarte').value, points: 0, dateNaissance: document.getElementById('cliNaiss').value });
+                localStorage.setItem('clients', JSON.stringify(clients));
+                closeModal('clientModal');
+                refreshClientsTable();
+                Swal.fire('Succès','Client ajouté','success');
+            };
+            
+            window.openFournisseurModal = () => {
+                document.body.insertAdjacentHTML('beforeend', `<div id="fourModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>➕ Nouveau fournisseur</h3><span onclick="closeModal('fourModal')" style="cursor:pointer">&times;</span></div><div class="modal-body"><div class="form-row"><div class="form-group"><label>Nom</label><input type="text" id="fourNom"></div><div class="form-group"><label>Contact</label><input type="text" id="fourContact"></div></div><div class="form-row"><div class="form-group"><label>Téléphone</label><input type="tel" id="fourTel"></div><div class="form-group"><label>Email</label><input type="email" id="fourEmail"></div></div><div class="form-group"><label>Adresse</label><input type="text" id="fourAdresse"></div><div class="form-row"><div class="form-group"><label>SIRET</label><input type="text" id="fourSiret"></div><div class="form-group"><label>Délai livraison (jours)</label><input type="number" id="fourDelai"></div></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('fourModal')">Annuler</button><button class="btn btn-primary" onclick="saveFournisseur()">Enregistrer</button></div></div></div>`);
+                document.getElementById('fourModal').style.display = 'flex';
+            };
+            
+            window.saveFournisseur = () => {
+                fournisseurs.push({ id: nextFournisseurId++, nom: document.getElementById('fourNom').value, contact: document.getElementById('fourContact').value, telephone: document.getElementById('fourTel').value, email: document.getElementById('fourEmail').value, adresse: document.getElementById('fourAdresse').value, siret: document.getElementById('fourSiret').value, delaiLivraison: parseInt(document.getElementById('fourDelai').value) });
+                localStorage.setItem('fournisseurs', JSON.stringify(fournisseurs));
+                closeModal('fourModal');
+                refreshFournisseursTable();
+                Swal.fire('Succès','Fournisseur ajouté','success');
+            };
+            
+            window.openUserModal = (userId=null) => {
+                const isEdit=userId!==null;
+                const u=isEdit?usersDB.find(u=>u.id===userId):null;
+                document.body.insertAdjacentHTML('beforeend', `<div id="userModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>${isEdit?'✏️ Modifier':'➕ Nouvel utilisateur'}</h3><span onclick="closeModal('userModal')" style="cursor:pointer">&times;</span></div><div class="modal-body"><div class="form-row"><div class="form-group"><label>Nom</label><input type="text" id="userNom" value="${isEdit?u.nom:''}"></div><div class="form-group"><label>Avatar</label><input type="text" id="userAvatar" value="${isEdit?u.avatar||'👤':'👤'}" maxlength="2"></div></div><div class="form-group"><label>Email</label><input type="email" id="userEmail" value="${isEdit?u.email:''}"></div><div class="form-row"><div class="form-group"><label>Mot de passe ${isEdit?'(laisser vide)':''}</label><input type="password" id="userPassword"></div><div class="form-group"><label>Rôle</label><select id="userRole"><option value="admin" ${isEdit&&u.role==='admin'?'selected':''}>Admin</option><option value="pharmacien" ${isEdit&&u.role==='pharmacien'?'selected':''}>Pharmacien</option><option value="caissier" ${isEdit&&u.role==='caissier'?'selected':''}>Caissier</option><option value="membre" ${isEdit&&u.role==='membre'?'selected':''}>Membre</option></select></div></div><div class="form-group"><label>Statut</label><select id="userStatus"><option value="active" ${isEdit&&u.status==='active'?'selected':''}>Actif</option><option value="inactive" ${isEdit&&u.status==='inactive'?'selected':''}>Inactif</option></select></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('userModal')">Annuler</button><button class="btn btn-primary" onclick="saveUser(${isEdit?userId:'null'})">Enregistrer</button></div></div></div>`);
+                document.getElementById('userModal').style.display = 'flex';
+            };
+            
+            window.saveUser = (userId) => {
+                const nom=document.getElementById('userNom').value, email=document.getElementById('userEmail').value, pwd=document.getElementById('userPassword').value, role=document.getElementById('userRole').value, status=document.getElementById('userStatus').value, avatar=document.getElementById('userAvatar').value;
+                if(!nom||!email){ Swal.fire('Erreur','Nom et email requis','error'); return; }
+                if(userId){
+                    const idx=usersDB.findIndex(u=>u.id===userId);
+                    if(idx!==-1){ usersDB[idx]={...usersDB[idx],nom,email,role,status,avatar:avatar||'👤'}; if(pwd) usersDB[idx].password=pwd; Swal.fire('Succès','Utilisateur modifié','success'); }
+                } else {
+                    if(!pwd){ Swal.fire('Erreur','Mot de passe requis','error'); return; }
+                    usersDB.push({ id:nextUserId++, nom, email, password:pwd, role, status, avatar:avatar||'👤', lastLogin:null, createdAt:new Date().toISOString() });
+                    Swal.fire('Succès','Utilisateur créé','success');
+                }
+                saveUsers();
+                closeModal('userModal');
+                refreshUsersTable();
+            };
+            
+            window.openVenteModal = (medId=null) => {
+                document.body.insertAdjacentHTML('beforeend', `<div id="venteModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>🛒 Nouvelle vente FIFO</h3><span onclick="closeModal('venteModal')" style="cursor:pointer">&times;</span></div><div class="modal-body"><div class="form-group"><label>Médicament</label><select id="venteMedSelect"></select></div><div class="form-group"><label>Quantité</label><input type="number" id="venteQte" min="1" value="1"></div><div class="form-group"><label>Client</label><select id="venteClientSelect"><option value="">Client anonyme</option>${clients.map(c=>`<option value="${c.id}">${c.nom} ${c.prenom}</option>`).join('')}</select></div><div class="form-group"><label>Lots disponibles (FIFO)</label><div id="lotsInfo"></div></div><div class="form-group"><label>Total</label><input type="text" id="venteTotal" readonly style="font-weight:bold;background:#f8f9fa"></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('venteModal')">Annuler</button><button class="btn btn-success" onclick="validerVente()">Valider et imprimer facture</button></div></div></div>`);
+                const select=document.getElementById('venteMedSelect');
+                select.innerHTML=medicaments.map(m=>`<option value="${m.id}" data-prix="${m.prixVente}">${m.nom} - ${m.prixVente}€</option>`).join('');
+                if(medId) select.value=medId;
+                select.onchange=updateLotsDisplay;
+                document.getElementById('venteQte').oninput=updateVenteTotal;
+                updateLotsDisplay();
+                document.getElementById('venteModal').style.display='flex';
+            };
+            
+            function updateLotsDisplay(){ const medId=parseInt(document.getElementById('venteMedSelect').value); const lots=getLotsFIFO(medId); const div=document.getElementById('lotsInfo'); if(lots.length===0) div.innerHTML='<span class="badge badge-danger">Aucun stock disponible</span>'; else div.innerHTML=lots.map(l=>`<div style="background:#f0f2f5;padding:8px;margin:5px;border-radius:8px">Lot ${l.lot}: ${l.quantite} unités - Exp: ${l.dateExpiration}</div>`).join(''); updateVenteTotal(); }
+            function updateVenteTotal(){ const select=document.getElementById('venteMedSelect'); const prix=parseFloat(select.options[select.selectedIndex]?.dataset.prix||0); const qte=parseInt(document.getElementById('venteQte').value)||0; document.getElementById('venteTotal').value=(prix*qte).toFixed(2)+' €'; }
+            
+            window.validerVente = () => {
+                const medId=parseInt(document.getElementById('venteMedSelect').value);
+                const med=medicaments.find(m=>m.id===medId);
+                const qte=parseInt(document.getElementById('venteQte').value);
+                const clientId=document.getElementById('venteClientSelect').value;
+                const client=clients.find(c=>c.id==clientId);
+                if(!med||!qte){ Swal.fire('Erreur','Données invalides','error'); return; }
+                const lots=getLotsFIFO(medId);
+                let stockTotal=lots.reduce((s,l)=>s+l.quantite,0);
+                if(qte>stockTotal){ Swal.fire('Erreur','Stock insuffisant','error'); return; }
+                let reste=qte, lotsUtilises=[];
+                for(let lot of lots){ if(reste<=0)break; const prelev=Math.min(lot.quantite,reste); lot.quantite-=prelev; lotsUtilises.push(lot.lot); reste-=prelev; }
+                for(let i=lotsStock.length-1;i>=0;i--) if(lotsStock[i].quantite===0) lotsStock.splice(i,1);
+                const total=med.prixVente*qte;
+                const newVente={ id:Date.now(), date:new Date().toISOString(), medicamentId:medId, medicamentNom:med.nom, lotUtilise:lotsUtilises.join(','), quantite:qte, prixUnitaire:med.prixVente, total:total, clientNom:client?`${client.nom} ${client.prenom}`:'Anonyme', vendeur:currentUser.nom };
+                ventes.push(newVente);
+                localStorage.setItem('ventes',JSON.stringify(ventes));
+                localStorage.setItem('lotsStock',JSON.stringify(lotsStock));
+                closeModal('venteModal');
+                refreshVentesList();
+                renderInventaire();
+                refreshMedTable();
+                renderDashboard();
+                Swal.fire({ title:'Vente effectuée', text:`Total: ${total.toFixed(2)} €`, icon:'success', showCancelButton:true, confirmButtonText:'Imprimer facture', cancelButtonText:'OK' }).then(res=>{ if(res.isConfirmed) imprimerFacture(newVente.id); });
+            };
+            
+            window.imprimerFacture = (venteId) => {
+                const vente=ventes.find(v=>v.id===venteId);
+                if(!vente) return;
+                const factureHtml = `<div class="facture-container"><div class="facture-header"><div class="facture-title">PHARMACIE SANTÉ+</div><div>123 Rue de la Pharmacie, 75001 Paris</div><div>Tél: 01 23 45 67 89 | Email: contact@pharmacie.fr</div><div>N° SIRET: 123 456 789 00012</div></div><div class="facture-info"><p><strong>FACTURE N°</strong> : ${vente.id.toString().padStart(6,'0')}</p><p><strong>Date</strong> : ${new Date(vente.date).toLocaleString()}</p><p><strong>Client</strong> : ${vente.clientNom}</p><p><strong>Vendeur</strong> : ${vente.vendeur}</p></div><table class="facture-table"><thead><tr><th>Désignation</th><th>Lot</th><th>Quantité</th><th>Prix unitaire</th><th>Total HT</th></tr></thead><tbody><tr><td>${vente.medicamentNom}</td><td>${vente.lotUtilise}</td><td>${vente.quantite}</td><td>${vente.prixUnitaire} €</td><td>${vente.total} €</td></tr></tbody></table><div class="facture-total"><p>Total TTC : ${vente.total} €</p><p>Dont TVA (10%) : ${(vente.total*0.1).toFixed(2)} €</p></div><div class="facture-footer"><p>Merci de votre confiance ! Règlement à réception de facture.</p></div></div>`;
+                const printWin=window.open('','_blank');
+                printWin.document.write(`<html><head><title>Facture ${vente.id}</title><style>body{font-family:'Courier New',monospace;margin:0;padding:20px}.facture-table{border-collapse:collapse;width:100%}.facture-table th,.facture-table td{border:1px solid #ddd;padding:10px}</style></head><body>${factureHtml}</body></html>`);
+                printWin.print();
+                printWin.close();
+            };
+            
+            window.openInventaireModal = () => {
+                document.body.insertAdjacentHTML('beforeend', `<div id="invModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>📦 Ajustement stock</h3><span onclick="closeModal('invModal')" style="cursor:pointer">&times;</span></div><div class="modal-body"><div class="form-group"><label>Médicament</label><select id="invMedSelect"></select></div><div class="form-group"><label>Type</label><select id="invType"><option value="entree">📥 Entrée</option><option value="sortie">📤 Sortie</option></select></div><div class="form-group"><label>Quantité</label><input type="number" id="invQte"></div><div id="invLotGroup" style="display:none"><div class="form-group"><label>Lot</label><input type="text" id="invLot"></div><div class="form-group"><label>Date expiration</label><input type="date" id="invExp"></div><div class="form-group"><label>Prix achat (€)</label><input type="number" id="invPrix" step="0.01"></div></div><div class="form-group"><label>Raison</label><input type="text" id="invRaison"></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('invModal')">Annuler</button><button class="btn btn-primary" onclick="ajusterStock()">Valider</button></div></div></div>`);
+                document.getElementById('invMedSelect').innerHTML=medicaments.map(m=>`<option value="${m.id}">${m.nom}</option>`).join('');
+                document.getElementById('invType').onchange=()=>document.getElementById('invLotGroup').style.display=document.getElementById('invType').value==='entree'?'block':'none';
+                document.getElementById('invModal').style.display='flex';
+            };
+            
+            window.ajusterStock = () => {
+                const medId=parseInt(document.getElementById('invMedSelect').value);
+                const type=document.getElementById('invType').value;
+                const qte=parseInt(document.getElementById('invQte').value);
+                const raison=document.getElementById('invRaison').value;
+                if(!qte||qte<=0){ Swal.fire('Erreur','Quantité invalide','error'); return; }
+                if(type==='entree'){
+                    const lot=document.getElementById('invLot').value, exp=document.getElementById('invExp').value, prix=parseFloat(document.getElementById('invPrix').value);
+                    if(!lot||!exp){ Swal.fire('Erreur','Lot et date requis','error'); return; }
+                    lotsStock.push({ id:nextLotId++, medicamentId:medId, lot, quantite:qte, prixAchat:prix||0, dateExpiration:exp, dateEntree:new Date().toISOString().split('T')[0] });
+                } else {
+                    let reste=qte;
+                    const lots=getLotsFIFO(medId);
+                    for(let lot of lots){ if(reste<=0)break; const prelev=Math.min(lot.quantite,reste); lot.quantite-=prelev; reste-=prelev; }
+                    if(reste>0){ Swal.fire('Erreur','Stock insuffisant','error'); return; }
+                    for(let i=lotsStock.length-1;i>=0;i--) if(lotsStock[i].quantite===0) lotsStock.splice(i,1);
+                }
+                mouvementsStock.push({ id:Date.now(), date:new Date().toISOString(), medicamentId:medId, type, quantite:qte, lot:document.getElementById('invLot')?.value, raison, user:currentUser.nom });
+                localStorage.setItem('lotsStock',JSON.stringify(lotsStock));
+                localStorage.setItem('mouvementsStock',JSON.stringify(mouvementsStock));
+                closeModal('invModal');
+                renderInventaire();
+                refreshMedTable();
+                Swal.fire('Succès','Stock mis à jour','success');
+            };
+            
+            window.openForumModal = () => {
+                document.body.insertAdjacentHTML('beforeend', `<div id="forumModal" class="modal"><div class="modal-content"><div class="modal-header"><h3>💬 Nouveau message</h3><span onclick="closeModal('forumModal')" style="cursor:pointer">&times;</span></div><div class="modal-body"><div class="form-group"><label>Message</label><textarea id="forumMsg" rows="5" style="width:100%;padding:10px;border-radius:12px;border:1px solid #ddd"></textarea></div></div><div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('forumModal')">Annuler</button><button class="btn btn-primary" onclick="postTextMessage()">Publier</button></div></div></div>`);
+                document.getElementById('forumModal').style.display='flex';
+            };
+            
+            window.postTextMessage = () => {
+                const msg=document.getElementById('forumMsg')?.value.trim();
+                if(!msg){ Swal.fire('Erreur','Message vide','error'); return; }
+                forumMessages.push({ id:nextMessageId++, auteurId:currentUser.id, auteurNom:currentUser.nom, message:msg, date:new Date().toISOString(), type:"text", audioUrl:null, supprime:false });
+                localStorage.setItem('forumMessages',JSON.stringify(forumMessages));
+                closeModal('forumModal');
+                renderForum();
+                Swal.fire('Succès','Message publié','success');
+            };
+            
+            window.toggleAudioRecording = async () => {
+                if(isRecording){
+                    if(mediaRecorder) mediaRecorder.stop();
+                    isRecording=false;
+                    const btn=document.getElementById('recordAudioBtn');
+                    if(btn){ btn.innerHTML='<i class="fas fa-microphone"></i> Enregistrer audio'; btn.classList.remove('btn-danger'); btn.classList.add('btn-success'); }
+                } else {
+                    try{
+                        const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+                        mediaRecorder=new MediaRecorder(stream);
+                        audioChunks=[];
+                        mediaRecorder.ondataavailable=e=>audioChunks.push(e.data);
+                        mediaRecorder.onstop=()=>{
+                            const audioBlob=new Blob(audioChunks,{type:'audio/webm'});
+                            const audioUrl=URL.createObjectURL(audioBlob);
+                            forumMessages.push({ id:nextMessageId++, auteurId:currentUser.id, auteurNom:currentUser.nom, message:"Message audio", date:new Date().toISOString(), type:"audio", audioUrl:audioUrl, supprime:false });
+                            localStorage.setItem('forumMessages',JSON.stringify(forumMessages));
+                            renderForum();
+                            Swal.fire('Succès','Audio envoyé','success');
+                            stream.getTracks().forEach(t=>t.stop());
+                        };
+                        mediaRecorder.start();
+                        isRecording=true;
+                        const btn=document.getElementById('recordAudioBtn');
+                        if(btn){ btn.innerHTML='<i class="fas fa-stop"></i> Arrêter'; btn.classList.remove('btn-success'); btn.classList.add('btn-danger'); }
+                        Swal.fire('Enregistrement','Parlez maintenant...','info');
+                    } catch(err){ Swal.fire('Erreur','Microphone non accessible','error'); }
+                }
+            };
+            
+            window.deleteMessage = (id) => {
+                Swal.fire({ title:'Supprimer', icon:'warning', showCancelButton:true }).then(res=>{
+                    if(res.isConfirmed){ const m=forumMessages.find(m=>m.id===id); if(m)m.supprime=true; localStorage.setItem('forumMessages',JSON.stringify(forumMessages)); renderForum(); Swal.fire('Supprimé','','success'); }
+                });
+            };
+            
+            window.deleteMed = (id) => {
+                Swal.fire({ title:'Supprimer', icon:'warning', showCancelButton:true }).then(res=>{
+                    if(res.isConfirmed){ medicaments=medicaments.filter(m=>m.id!==id); lotsStock=lotsStock.filter(l=>l.medicamentId!==id); localStorage.setItem('medicaments',JSON.stringify(medicaments)); localStorage.setItem('lotsStock',JSON.stringify(lotsStock)); refreshMedTable(); renderInventaire(); renderDashboard(); Swal.fire('Supprimé','','success'); }
+                });
+            };
+            
+            window.deleteClient = (id) => { clients=clients.filter(c=>c.id!==id); localStorage.setItem('clients',JSON.stringify(clients)); refreshClientsTable(); Swal.fire('Supprimé','','success'); };
+            window.deleteFournisseur = (id) => { fournisseurs=fournisseurs.filter(f=>f.id!==id); localStorage.setItem('fournisseurs',JSON.stringify(fournisseurs)); refreshFournisseursTable(); Swal.fire('Supprimé','','success'); };
+            window.deleteUser = (id) => { if(id===currentUser.id){ Swal.fire('Erreur','Impossible de supprimer son propre compte','error'); return; } Swal.fire({ title:'Confirmation', icon:'warning', showCancelButton:true }).then(res=>{ if(res.isConfirmed){ usersDB=usersDB.filter(u=>u.id!==id); saveUsers(); refreshUsersTable(); Swal.fire('Supprimé','','success'); } }); };
+            window.editUser = (id) => openUserModal(id);
+            
+            window.showProfile = () => { Swal.fire('Profil',`Nom: ${currentUser.nom}\nRôle: ${currentUser.role}\nEmail: ${currentUser.email}`,'info'); };
+            window.closeModal = (id) => { const el=document.getElementById(id); if(el) el.style.display='none'; };
+            
+            function showPage(page) {
+                document.querySelectorAll('[id$="Page"]').forEach(p=>p.style.display='none');
+                const el=document.getElementById(`${page}Page`);
+                if(el) el.style.display='block';
+                document.querySelectorAll('.nav-link[data-page]').forEach(l=>l.classList.remove('active'));
+                const active=document.querySelector(`.nav-link[data-page="${page}"]`);
+                if(active) active.classList.add('active');
+                const titles={dashboard:'Dashboard',inventaire:'Inventaire FIFO',medicaments:'Médicaments',ventes:'Ventes FIFO',clients:'Clients',fournisseurs:'Fournisseurs',statistiques:'Statistiques',rapports:'Rapports avancés',utilisateurs:'Utilisateurs',forum:'Forum'};
+                document.getElementById('pageTitle').innerHTML=titles[page];
+                if(page==='dashboard') renderDashboard();
+                if(page==='inventaire') renderInventaire();
+                if(page==='medicaments') renderMedicaments();
+                if(page==='ventes') renderVentes();
+                if(page==='clients') renderClients();
+                if(page==='fournisseurs') renderFournisseurs();
+                if(page==='statistiques') renderStatistiques();
+                if(page==='rapports') renderRapports();
+                if(page==='utilisateurs') renderUtilisateurs();
+                if(page==='forum') renderForum();
+                if(window.innerWidth<=768) closeMobileMenu();
+            }
+            
+            const sidebar=document.getElementById('sidebar'), overlay=document.getElementById('sidebarOverlay'), toggleBtn=document.getElementById('mobileToggle');
+            function closeMobileMenu(){ sidebar.classList.remove('mobile-open'); overlay.classList.remove('active'); }
+            function openMobileMenu(){ sidebar.classList.add('mobile-open'); overlay.classList.add('active'); }
+            if(toggleBtn) toggleBtn.addEventListener('click',()=>{if(sidebar.classList.contains('mobile-open')) closeMobileMenu(); else openMobileMenu();});
+            if(overlay) overlay.addEventListener('click',closeMobileMenu);
+            document.querySelectorAll('.nav-link[data-page]').forEach(link=>{link.addEventListener('click',()=>showPage(link.dataset.page));});
+            document.getElementById('logoutBtn').addEventListener('click',()=>{ localStorage.removeItem('pharmacie_session'); currentUser=null; renderLoginPage(); });
+            showPage('dashboard');
+        }
+        
+        const savedSession = localStorage.getItem('pharmacie_session');
+        if(savedSession){
+            const session=JSON.parse(savedSession);
+            const user=usersDB.find(u=>u.id===session.id && u.status==='active');
+            if(user){ currentUser=user; renderMainApp(); }
+            else{ localStorage.removeItem('pharmacie_session'); renderLoginPage(); }
+        } else { renderLoginPage(); }
+    </script>
+</body>
+</html>
